@@ -1,13 +1,280 @@
-<!doctype html><html><head><meta charset="utf-8"><title>AI Finance Assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><style>
-body{font-family:Arial;background:#f5f7fb;margin:0}.wrap{max-width:900px;margin:30px auto;background:#fff;padding:30px;border-radius:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}input,select{padding:12px;border:1px solid #ddd;border-radius:8px}button{padding:12px;background:#111;color:white;border:0;border-radius:8px}#total{font-size:30px;margin:20px 0}</style></head>
-<body><div class="wrap"><h1>AI Personal Finance Assistant</h1><p>Track expenses and visualize spending.</p>
-<div class="grid"><input id="date" type="date"><select id="cat"><option>Food</option><option>Travel</option><option>Education</option><option>Shopping</option><option>Bills</option><option>Other</option></select><input id="amount" type="number" placeholder="Amount"><input id="note" placeholder="Note"></div><br><button onclick="add()">Add Expense</button>
-<div id="total">₹0</div><canvas id="chart"></canvas><h2>Transactions</h2><div id="list"></div></div>
+```html
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AI Finance Assistant</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f5f7fb;
+    margin: 0;
+}
+
+.wrap {
+    max-width: 900px;
+    margin: 30px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 16px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+input, select {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+button {
+    padding: 12px;
+    background: #111;
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #333;
+}
+
+#total {
+    font-size: 30px;
+    margin: 20px 0;
+}
+
+#message {
+    margin-top: 10px;
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+    <h1>AI Personal Finance Assistant</h1>
+    <p>Track expenses and visualize spending.</p>
+
+    <div class="grid">
+
+        <input id="date" type="date">
+
+        <select id="cat">
+            <option>Food</option>
+            <option>Travel</option>
+            <option>Education</option>
+            <option>Shopping</option>
+            <option>Bills</option>
+            <option>Other</option>
+        </select>
+
+        <input id="amount" type="number" placeholder="Amount">
+
+        <input id="note" placeholder="Note">
+
+    </div>
+
+    <br>
+
+    <button id="addButton">Add Expense</button>
+
+    <div id="message"></div>
+
+    <div id="total">₹0</div>
+
+    <canvas id="chart"></canvas>
+
+    <h2>Transactions</h2>
+
+    <div id="list"></div>
+
+</div>
+
 <script>
+
 let chart;
-async function load(){let d=await fetch('/expenses').then(r=>r.json());document.getElementById('total').innerText='Total spent: ₹'+d.total;
-document.getElementById('list').innerHTML=d.expenses.map(x=>`<p>${x.date} — <b>${x.category}</b> — ₹${x.amount} ${x.note}</p>`).join('');
-if(chart)chart.destroy();chart=new Chart(document.getElementById('chart'),{type:'doughnut',data:{labels:Object.keys(d.by_category),datasets:[{data:Object.values(d.by_category)}]}})}
-async function add(){let a=+amount.value;if(!a)return alert('Enter amount');await fetch('/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:date.value,category:cat.value,amount:a,note:note.value})});amount.value='';note.value='';load()}load();
-</script></body></html>
+
+const dateInput = document.getElementById("date");
+const categoryInput = document.getElementById("cat");
+const amountInput = document.getElementById("amount");
+const noteInput = document.getElementById("note");
+const addButton = document.getElementById("addButton");
+
+
+// Set today's date automatically
+const today = new Date();
+
+const year = today.getFullYear();
+const month = String(today.getMonth() + 1).padStart(2, "0");
+const day = String(today.getDate()).padStart(2, "0");
+
+dateInput.value = `${year}-${month}-${day}`;
+
+
+// Load expenses
+async function load() {
+
+    try {
+
+        const response = await fetch("/expenses");
+
+        if (!response.ok) {
+            throw new Error("Could not load expenses");
+        }
+
+        const data = await response.json();
+
+        document.getElementById("total").innerText =
+            "Total spent: ₹" + data.total;
+
+
+        // Display transactions
+        document.getElementById("list").innerHTML =
+            data.expenses.map(x =>
+                `<p>
+                    ${x.date} —
+                    <b>${x.category}</b> —
+                    ₹${x.amount}
+                    ${x.note}
+                </p>`
+            ).join("");
+
+
+        // Update chart
+        if (chart) {
+            chart.destroy();
+        }
+
+        chart = new Chart(
+            document.getElementById("chart"),
+            {
+                type: "doughnut",
+
+                data: {
+                    labels: Object.keys(data.by_category),
+
+                    datasets: [{
+                        data: Object.values(data.by_category)
+                    }]
+                }
+            }
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("message").innerText =
+            "Unable to load expenses. Make sure the Flask server is running.";
+
+    }
+}
+
+
+// Add expense
+async function addExpense() {
+
+    const amount = Number(amountInput.value);
+
+    if (!amount || amount <= 0) {
+
+        document.getElementById("message").innerText =
+            "Please enter a valid amount.";
+
+        return;
+    }
+
+
+    const expense = {
+
+        date: dateInput.value,
+
+        category: categoryInput.value,
+
+        amount: amount,
+
+        note: noteInput.value
+
+    };
+
+
+    try {
+
+        addButton.disabled = true;
+
+        addButton.innerText = "Adding...";
+
+
+        const response = await fetch("/expenses", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify(expense)
+
+        });
+
+
+        if (!response.ok) {
+
+            throw new Error("Failed to add expense");
+
+        }
+
+
+        amountInput.value = "";
+
+        noteInput.value = "";
+
+
+        document.getElementById("message").innerText =
+            "Expense added successfully!";
+
+
+        await load();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("message").innerText =
+            "Failed to add expense. Check that the Flask server is running.";
+
+    } finally {
+
+        addButton.disabled = false;
+
+        addButton.innerText = "Add Expense";
+
+    }
+
+}
+
+
+// Button click
+addButton.addEventListener("click", addExpense);
+
+
+// Load data when page opens
+load();
+
+</script>
+
+</body>
+</html>
+```
