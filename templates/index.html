@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>AI Finance Assistant</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script><style>
+body{font-family:Arial;background:#f5f7fb;margin:0}.wrap{max-width:900px;margin:30px auto;background:#fff;padding:30px;border-radius:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}input,select{padding:12px;border:1px solid #ddd;border-radius:8px}button{padding:12px;background:#111;color:white;border:0;border-radius:8px}#total{font-size:30px;margin:20px 0}</style></head>
+<body><div class="wrap"><h1>AI Personal Finance Assistant</h1><p>Track expenses and visualize spending.</p>
+<div class="grid"><input id="date" type="date"><select id="cat"><option>Food</option><option>Travel</option><option>Education</option><option>Shopping</option><option>Bills</option><option>Other</option></select><input id="amount" type="number" placeholder="Amount"><input id="note" placeholder="Note"></div><br><button onclick="add()">Add Expense</button>
+<div id="total">₹0</div><canvas id="chart"></canvas><h2>Transactions</h2><div id="list"></div></div>
+<script>
+let chart;
+async function load(){let d=await fetch('/expenses').then(r=>r.json());document.getElementById('total').innerText='Total spent: ₹'+d.total;
+document.getElementById('list').innerHTML=d.expenses.map(x=>`<p>${x.date} — <b>${x.category}</b> — ₹${x.amount} ${x.note}</p>`).join('');
+if(chart)chart.destroy();chart=new Chart(document.getElementById('chart'),{type:'doughnut',data:{labels:Object.keys(d.by_category),datasets:[{data:Object.values(d.by_category)}]}})}
+async function add(){let a=+amount.value;if(!a)return alert('Enter amount');await fetch('/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:date.value,category:cat.value,amount:a,note:note.value})});amount.value='';note.value='';load()}load();
+</script></body></html>
